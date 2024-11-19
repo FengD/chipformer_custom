@@ -27,7 +27,8 @@ class GraphConvSparse(nn.Module):
 		outputs = self.activation(x)
 		return outputs
 
-
+# predict the probability of the connection between two node
+# sigmoid used to change the matrix to a probability matrix of each cell, here represent the connection probability of node i to node j [i,j] in the matrix
 def dot_product_decode(Z):
 	A_pred = torch.sigmoid(torch.matmul(Z,Z.t()))
 	return A_pred

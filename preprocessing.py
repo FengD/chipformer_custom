@@ -5,9 +5,19 @@ since datasets are the same as those in kipf's implementation,
 Their preprocessing source was used as-is.
 *************************************
 '''
+# Used for graph processing
+
 import numpy as np
 import scipy.sparse as sp
 
+# normally graph adj is a sparse matrix, and scipy is used to treat sparse matrix
+# it transform the matrix to a (row, cal, data) tuple
+# For example, 
+# [0 0 1 0 1,               (0,2,1)
+#  0 0 0 1 0,               (0,4,1)
+#  1 0 0 0 0,   ---->       (1,3,1)
+#  0 2 0 0 0                (2,0,1)
+#  0 0 0 0 0]               (3,1,2)
 def sparse_to_tuple(sparse_mx):
     if not sp.isspmatrix_coo(sparse_mx):
         sparse_mx = sparse_mx.tocoo()
@@ -16,10 +26,12 @@ def sparse_to_tuple(sparse_mx):
     shape = sparse_mx.shape
     return coords, values, shape
 
+# A′= D^−1/2 ​A D^-1/2​  it is used to calculation a more reasonable adj feature matrix 
 def preprocess_graph(adj):
-    adj = sp.coo_matrix(adj)
-    adj_ = adj + sp.eye(adj.shape[0])
-    rowsum = np.array(adj_.sum(1))
+    adj = sp.coo_matrix(adj)   # origin adj matrix
+    adj_ = adj + sp.eye(adj.shape[0])  # add an eye matrix to add node itself in the adj matrix
+    rowsum = np.array(adj_.sum(1))  # calculate the degree of each node
+    # renormalization 
     degree_mat_inv_sqrt = sp.diags(np.power(rowsum, -0.5).flatten())
     adj_normalized = adj_.dot(degree_mat_inv_sqrt).transpose().dot(degree_mat_inv_sqrt).tocoo()
     return sparse_to_tuple(adj_normalized)
