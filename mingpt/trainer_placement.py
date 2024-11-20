@@ -12,7 +12,7 @@ import numpy as np
 
 import torch
 from torch.utils.data.dataloader import DataLoader
-# from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from mingpt.prim import prim_real
 
 
@@ -20,9 +20,13 @@ logger = logging.getLogger(__name__)
 
 from mingpt.utils import sample
 import torch
-# import matplotlib.pyplot as plt
+
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 from mingpt.place_db import PlaceDB
+
+import gym
 
 seq_len = 256
 
@@ -52,9 +56,11 @@ def get_norm_reward(reward, benchmark, benchmark_id, macro_num = 255):
 grid = 84
 
 
-benchmark_list = ['adaptec1', 'adaptec2', 'adaptec3', 'adaptec4',
-'bigblue1', 'bigblue2', 'bigblue3', 'bigblue4', 
-'ibm01', 'ibm02', 'ibm03', 'ibm04']
+benchmark_list = ['adaptec1', 'adaptec2', 
+                #   'adaptec3', 'adaptec4',
+                #   'bigblue1', 'bigblue2', 'bigblue3', 'bigblue4', 
+                #   'ibm01', 'ibm02', 'ibm03', 'ibm04'
+                  ]
 
 benchmark_list_abbre = [x[0]+x[-1] for x in benchmark_list]
 print("start")
@@ -62,7 +68,7 @@ print("start")
 # select offline data for training
 placedb_g_lib = {
     "adaptec1": PlaceDB("adaptec1"),
-    # "adaptec2": PlaceDB("adaptec2"),
+    "adaptec2": PlaceDB("adaptec2"),
     # "adaptec3": PlaceDB("adaptec3"),
     # "adaptec4": PlaceDB("adaptec4"),
     # "bigblue1": PlaceDB("bigblue1"),
@@ -125,12 +131,19 @@ class Trainer:
         self.training_step = 0
         self.best_acc = 0.0
         strftime = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
-        # self.writer = SummaryWriter('./tf_logs/{}'.format(strftime))
+        if not os.path.exists("./tf_logs"):
+            os.mkdir("./tf_logs")
+        self.writer = SummaryWriter('./tf_logs/{}'.format(strftime))
         # take over whatever gpus are on the system
         self.device = 'cpu'
         if torch.cuda.is_available():
             self.device = torch.cuda.current_device()
             self.model = torch.nn.DataParallel(self.model).to(self.device)
+
+        self.envs = {}
+        self.args=Args(self.config.seed)
+        for benchmark in benchmark_list:
+            self.envs[benchmark] = gym.make('place_env-v1', args=self.args, benchmark=benchmark, is_all_macro=True)
 
     def save_checkpoint(self):
         # DataParallel wrappers keep raw model object in .module attribute
@@ -171,9 +184,9 @@ class Trainer:
 
                     logits, loss, acc = model(x, y, y, r, t, m_x, b, st, cir, l)
                     loss = loss.mean() # collapse all losses if they are scattered on multiple gpus
-                    # self.writer.add_scalar('loss', loss, self.training_step)
+                    self.writer.add_scalar('loss', loss, self.training_step)
                     acc = acc.mean()
-                    # self.writer.add_scalar('acc', acc, self.training_step)
+                    self.writer.add_scalar('acc', acc, self.training_step)
                     losses.append(loss.item())
                 if is_train:
                     # backprop and update the parameters
@@ -196,7 +209,7 @@ class Trainer:
                             param_group['lr'] = lr
                     else:
                         lr = config.learning_rate
-                    # self.writer.add_scalar('lr', lr, self.training_step)
+                    self.writer.add_scalar('lr', lr, self.training_step)
 
                     # report progress
                     accs = np.append(accs, acc.cpu().numpy().mean())
@@ -233,7 +246,7 @@ class Trainer:
                 T_rewards_x_all_macro = []
                 T_rewards_y_all_macro = []
                 
-                # plt.cla()
+                plt.cla()
                 tmp_y_1 = []
                 for level in level_range:
                     level /= 100.0
@@ -246,8 +259,7 @@ class Trainer:
                             tmp_y_1.append(t)
                     if self.config.test_all_macro:
                         print("is all macros")
-                        _, T_rewards = self.get_returns(level, benchmark = benchmark, 
-                            is_all_macro = True)
+                        _, T_rewards = self.get_returns(level, benchmark = benchmark, is_all_macro = True)
                         for t in T_rewards:
                             T_rewards_x_all_macro.append(level)
                             T_rewards_y_all_macro.append(t)
@@ -256,11 +268,12 @@ class Trainer:
                     T_scores_y_all_1.append(np.mean(tmp_y_1))
                     T_scores_y_all_err_1.append(np.std(tmp_y_1))
                     T_scores_x_all_1.append(i*3)
-                    strftime = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime()) 
-                    # plt.savefig('./{}-{}-N.png'.format(strftime, benchmark), 
+                    strftime = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+                    self.envs[benchmark].save_fig('./figures/{}-{}-N.png'.format(strftime, benchmark))
+                    # plt.savefig('./figures/{}-{}-N.png'.format(strftime, benchmark), 
                     #     dpi=300, bbox_inches='tight', pad_inches = 0.1)
-                    # self.writer.add_scalars('eval_{}'.format(benchmark), eval_return[benchmark], -1)
-                    # plt.cla()
+                    self.writer.add_scalars('eval_{}'.format(benchmark), eval_return[benchmark], -1)
+                    plt.cla()
             return 
 
         for epoch in range(config.max_epochs):
@@ -276,18 +289,18 @@ class Trainer:
                         eval_return[benchmark] = {}
                         T_scores_x = []
                         T_scores_y = []
-                        # plt.cla()
+                        plt.cla()
                         for level in [0]:
                             level /= 100.0
                             eval_return[benchmark][str(level)], T_scores = self.get_returns(level, benchmark = benchmark)
                             for t in T_scores:
                                 T_scores_x.append(level)
                                 T_scores_y.append(t)
-                        strftime = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime()) 
-                        # plt.savefig('./{}-{}-{}.png'.format(strftime, benchmark, epoch), 
-                        #     dpi=300, bbox_inches='tight', pad_inches = 0.1)
-                        # plt.cla()
-                        # self.writer.add_scalars('eval_{}'.format(benchmark), eval_return[benchmark], epoch)
+                        strftime = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+                        self.envs[benchmark].save_fig('./figures/{}-{}-{}.png'.format(strftime, benchmark, epoch))
+                        
+                        plt.cla()
+                        self.writer.add_scalars('eval_{}'.format(benchmark), eval_return[benchmark], epoch)
                 else:
                     raise NotImplementedError()
 
@@ -296,13 +309,16 @@ class Trainer:
         is_shuffle_benchmark_id = False, is_all_macro = False):
         global circuit_feas
         self.model.train(False)
-        args=Args(self.config.seed)
-        env = Env(args, benchmark, is_all_macro)
+        # args=Args(self.config.seed)
+        # env = Env(args, benchmark, is_all_macro)
+        env = self.envs[benchmark]
+        if not os.path.exists("results"):
+            os.mkdir("results")
         if is_all_macro and not is_single:
             fwrite = open("results/log_{}.log".format(benchmark), 'w')
         global benchmark_to_id
         benchmark_id = torch.tensor(benchmark_to_id[benchmark], dtype=torch.int64).reshape(1, 1)
-        env.eval()
+        # env.eval()
 
         T_rewards, T_Qs = [], []
         T_scores = []
@@ -440,8 +456,9 @@ class Trainer:
     def get_hpwl(self, actions, benchmark):
         global circuit_feas
         self.model.train(False)
-        args = Args(self.config.seed)
-        env = Env(args, benchmark, is_all_macro = True)
+        # args = Args(self.config.seed)
+        # env = Env(args, benchmark, is_all_macro = True)
+        env = self.envs[benchmark]
         state, reward_sum, done, meta_state = env.reset()
         step_num = 0
         while not done:
@@ -453,8 +470,9 @@ class Trainer:
     def get_remain_returns(self, actions, benchmark):
         global circuit_feas
         self.model.train(False)
-        args = Args(self.config.seed)
-        env = Env(args, benchmark, is_all_macro = True)
+        # args = Args(self.config.seed)
+        # env = Env(args, benchmark, is_all_macro = True)
+        env = self.envs[benchmark]
         benchmark_id = torch.tensor(benchmark_to_id[benchmark], dtype=torch.int64).reshape(1, 1)
         circuit_feas_for_benchmark = torch.tensor(circuit_feas[benchmark_id], dtype = torch.float32)
         actions = actions.squeeze().tolist()
@@ -508,9 +526,8 @@ class Trainer:
         outputs["cost"] = cost
         return outputs
 
-
 # for evaluation
-class Env():
+class Env(gym.Env):
     def __init__(self, args, benchmark = "adaptec1", is_all_macro = False):
         global benchmark_to_id
         self.device = args.device
@@ -560,11 +577,11 @@ class Env():
         self.net_min_max_ord = copy.deepcopy(self.init_net_min_max_ord)
         self.training = True  # Consistent with model training mode
 
-    def _get_state(self):
-        pass
+    # def _get_state(self):
+    #     pass
 
-    def _reset_buffer(self):
-        pass
+    # def _reset_buffer(self):
+    #     pass
 
     def reset(self):
         self.net_placed_set = {}
@@ -674,6 +691,7 @@ class Env():
         return torch.from_numpy(states), reward, done, \
             torch.from_numpy(np.array([next_x, next_y]))
     
+    # Position Mask same in MaskPlace
     def get_mask(self, next_x, next_y):
         mask = np.zeros((self.grid, self.grid))
         for node_name in self.node_pos:
@@ -686,6 +704,7 @@ class Env():
         mask[:, self.grid - next_y + 1:] = 1
         return mask
     
+    # WireMask same in MaskPlace
     def get_net_img(self):
         net_img = np.zeros((self.grid, self.grid))
         next_node_name = self.placedb.node_id_to_name[self.num_macro_placed]
@@ -714,6 +733,23 @@ class Env():
                 for j in range(end_y+1, self.grid):
                     net_img[:, j] += (j - end_y) * weight
         return net_img
+
+    def save_fig(self, file_path):
+        fig1 = plt.figure()
+        ax1 = fig1.add_subplot(111, aspect='equal')
+        ax1.axes.xaxis.set_visible(False)
+        ax1.axes.yaxis.set_visible(False)
+        for node_name in self.node_pos:
+            x, y, size_x, size_y = self.node_pos[node_name]
+            ax1.add_patch(
+                patches.Rectangle(
+                    (x / self.grid, y / self.grid),   # (x,y)
+                    size_x / self.grid,          # width
+                    size_y / self.grid, linewidth=1, edgecolor='k',
+                )
+            )
+        fig1.savefig(file_path, dpi=300, bbox_inches='tight', pad_inches=0.1)
+        plt.close()
 
     def comp_res(self):
         hpwl = 0.0
@@ -773,21 +809,21 @@ class Env():
         return hpwl, cost
 
     # Uses loss of life as terminal signal
-    def train(self):
-        self.training = True
+    # def train(self):
+    #     self.training = True
 
-    # Uses standard terminal signal
-    def eval(self):
-        self.training = False
+    # # Uses standard terminal signal
+    # def eval(self):
+    #     self.training = False
 
-    def action_space(self):
-        return len(self.actions)
+    # def action_space(self):
+    #     return len(self.actions)
 
-    def render(self):
-        pass
+    # def render(self):
+    #     pass
 
-    def close(self):
-        pass
+    # def close(self):
+    #     pass
 
 class Args:
     def __init__(self, seed = 42):
@@ -795,3 +831,4 @@ class Args:
         self.seed = seed
         self.max_episode_length = 108e3
         self.history_length = 4
+

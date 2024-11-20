@@ -291,7 +291,7 @@ def divide_node(node_info):
 
 class PlaceDB():
 
-    def __init__(self, benchmark = None, offset = 0, is_graph = False):
+    def __init__(self, benchmark = None, offset = 0, is_graph = True):
         if benchmark is None:
             self.benchmark = None
             self.node_info, self.node_info_raw_id_name, self.port_info = None, None, None
@@ -353,6 +353,9 @@ class PlaceDB():
         print("pin_cnt = {}".format(get_pin_cnt(self.net_info)))
         print("port_cnt = {}".format(len(self.port_info)))
         print("area ratio = {}".format(get_total_area(self.node_info)/(self.max_height*self.max_height)))
+        print("circuit_fea_shape= {}".format(np.shape(self.circuit_fea)))
+        print("circuit_fea= {}".format(self.circuit_fea))
+        print("graph= {}".format(self.graph))
 
     def draw_hist(self):
         areas = []
@@ -495,7 +498,10 @@ class PlaceDB():
 
 if __name__ == "__main__":
     placedb = PlaceDB("adaptec1")
+    print("==============================")
     placedb2 = PlaceDB("adaptec1", is_graph = True)
+    print("==============================")
     placedb.debug_str()
+
 
 
