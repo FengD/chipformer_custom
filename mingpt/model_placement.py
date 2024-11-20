@@ -23,11 +23,12 @@ from config import config
 grid = config.grid
 no_circuit_emb = False
 
-benchmark_to_id = {'adaptec1': 0, 'adaptec2': 1, 'adaptec3': 2, 'adaptec4': 3,
-            'bigblue1': 4, 'bigblue2': 5, 'bigblue3': 6, 'bigblue4': 7,
-            'ibm01': 8, 'ibm02': 9, 'ibm03': 10, 'ibm04': 11,
-            'ibm05':12, 'ibm06':13,}
+benchmark_to_id = { 'adaptec1': 0, 'adaptec2': 1, 'adaptec3': 2, 'adaptec4': 3,
+                    'bigblue1': 4, 'bigblue2': 5, 'bigblue3': 6, 'bigblue4': 7,
+                    'ibm01': 8, 'ibm02': 9, 'ibm03': 10, 'ibm04': 11,
+                    'ibm05':12, 'ibm06':13,}
 benchmark_id_to_name = {v: k for k, v in benchmark_to_id.items()}
+
 
 class GELU(nn.Module):
     def forward(self, input):
@@ -44,12 +45,6 @@ class GPTConfig:
         self.block_size = block_size
         for k,v in kwargs.items():
             setattr(self, k, v)
-
-# class GPT1Config(GPTConfig):
-#     """ GPT-1 like network roughly 125M params """ # it is the gpt-2 chonfig 125M param
-#     n_layer = 12
-#     n_head = 12
-#     n_embd = 768
 
 class CausalSelfAttention(nn.Module):
     """
@@ -127,11 +122,6 @@ class GPT(nn.Module):
 
         # input embedding stem
         print("config.vocab_size", config.vocab_size)
-        self.tok_emb = nn.Embedding(config.vocab_size, config.n_embd)
-        #  255*3(rtg, state, action) + 1 
-        self.pos_emb = nn.Parameter(torch.zeros(1, config.block_size + 1, config.n_embd)) # 255*3
-        #  255 + 1(circuit emb)
-        self.global_pos_emb = nn.Parameter(torch.zeros(1, config.block_size // 3 + 1, config.n_embd))
         self.drop = nn.Dropout(config.embd_pdrop)
 
         # transformer
@@ -145,36 +135,25 @@ class GPT(nn.Module):
 
         logger.info("number of parameters: %e", sum(p.numel() for p in self.parameters()))
 
-        self.state_encoder_s = nn.Sequential(nn.Conv2d(3, 16, 8, stride=2, padding=1), nn.ReLU(), # 
+        self.circuit_embedding = nn.Sequential(nn.Linear(256 * 3, 1024), nn.ReLU(), 
+                                nn.Linear(1024, 1024), nn.ReLU(),
+                                nn.Linear(1024, config.n_embd))
+        self.state_embedding = nn.Sequential(nn.Conv2d(3, 16, 8, stride=2, padding=1), nn.ReLU(), # 
                                  nn.Conv2d(16, 32, 4, stride=2, padding=1), nn.ReLU(), 
                                  nn.Conv2d(32, 16, 3, stride=2, padding=1), nn.ReLU(), # 14*14*16
                                  nn.Flatten(), nn.Linear(1600, config.n_embd-2))
+        self.action_embedding = nn.Embedding(grid*grid, config.n_embd)
 
-        # small kernel conv
-        self.action_head = nn.Sequential(nn.Conv2d(3, 8, 1, stride=1, padding=0), nn.ReLU(), # 
-                                 nn.Conv2d(8, 8, 1, stride=1, padding=0), nn.ReLU(), 
-                                 nn.Conv2d(8, 1, 1, stride=1, padding=0), # 14*14*8
-                                 nn.Flatten())
-        self.action_head_s = nn.Sequential(nn.Conv2d(1, 8, 1, stride=1, padding=0), nn.ReLU(), # 
+        self.action_head = nn.Sequential(nn.Conv2d(1, 8, 1, stride=1, padding=0), nn.ReLU(), # 
                                  nn.Conv2d(8, 8, 1, stride=1, padding=0), nn.ReLU(), 
                                  nn.Conv2d(8, 1, 1, stride=1, padding=0), # 14*14*8
                                  nn.Flatten())
 
-        self.one_kernel = nn.Sequential(nn.Conv2d(2, 1, 1, stride=1, padding=0), nn.Flatten())
+        self.one_kernel = nn.Sequential(nn.Conv2d(2, 1, 1, stride=1, padding=0), nn.Flatten())  # action merge
 
         self.ret_emb = nn.Sequential(nn.Linear(1, config.n_embd), nn.Tanh())
-        
-        self.circuit_emb = nn.Embedding(10, config.n_embd-2)
 
-        self.circuit_emb_tmp = nn.Embedding(20, config.n_embd)
 
-        self.circuit_emb_s = nn.Linear(2, config.n_embd)
-
-        self.circuit_emb_ss = nn.Sequential(nn.Linear(256*3, 1024), nn.ReLU(), 
-                                nn.Linear(1024, 1024), nn.ReLU(),
-                                nn.Linear(1024, config.n_embd))
-
-        self.action_embeddings_s = nn.Embedding(grid*grid, config.n_embd)
 
     def get_block_size(self):
         return self.block_size
@@ -217,8 +196,8 @@ class GPT(nn.Module):
                     no_decay.add(fpn)
 
         # special case the position embedding parameter in the root GPT module as not decayed
-        no_decay.add('pos_emb')
-        no_decay.add('global_pos_emb')
+        # no_decay.add('pos_emb')
+        # no_decay.add('global_pos_emb')
 
         # validate that we considered every parameter
         param_dict = {pn: p for pn, p in self.named_parameters()}
@@ -252,7 +231,7 @@ class GPT(nn.Module):
             assert False
         else:
             circuit_embeddings = circuit_feas
-            state_embeddings = self.state_encoder_s(states.reshape(-1, 3, grid, grid).type(torch.float32).contiguous())
+            state_embeddings = self.state_embedding(states.reshape(-1, 3, grid, grid).type(torch.float32).contiguous())
             if len(meta_states.shape) == 2:
                 state_embeddings = torch.cat((state_embeddings, meta_states[:, :2].reshape(-1, 2)), dim = 1)
             else:
@@ -261,7 +240,7 @@ class GPT(nn.Module):
         # batch / sequence / n_embd
         state_embeddings = state_embeddings.reshape(states.shape[0], states.shape[1], self.config.n_embd) # (batch, block_size, n_embd)
         circuit_embeddings = circuit_embeddings.reshape(-1, 256*3)
-        circuit_embeddings = self.circuit_emb_ss(circuit_embeddings)
+        circuit_embeddings = self.circuit_embedding(circuit_embeddings)
         
         if no_circuit_emb:
             circuit_embeddings = torch.zeros_like(circuit_embeddings)
@@ -273,7 +252,7 @@ class GPT(nn.Module):
             rtg_embeddings = self.ret_emb(rtgs.type(torch.float32))
             rtg_embeddings = rtg_embeddings.reshape(states.shape[0], -1, self.config.n_embd)
             rtg_embeddings = torch.zeros_like(rtg_embeddings)
-            action_embeddings = self.action_embeddings_s(actions.type(torch.long).squeeze(-1))
+            action_embeddings = self.action_embedding(actions.type(torch.long).squeeze(-1))
             
             token_embeddings = torch.zeros((states.shape[0], 1+states.shape[1]*3 - int(targets is None), self.config.n_embd), dtype=torch.float32, device=state_embeddings.device)
             token_embeddings[:,0,:] = circuit_embeddings.squeeze()
@@ -313,7 +292,7 @@ class GPT(nn.Module):
         else:
             raise NotImplementedError()
 
-        action_h = self.action_head_s(states[:, :, :].reshape(-1, 3, grid, grid)[:, 1, :, :].reshape(-1, 1, grid, grid))
+        action_h = self.action_head(states[:, :, :].reshape(-1, 3, grid, grid)[:, 1, :, :].reshape(-1, 1, grid, grid))
         action_h = action_h.reshape(states.shape[0] * states.shape[1], 1, grid, grid)
         logits_action_h = torch.cat((logits.reshape(states.shape[0] * states.shape[1], 1, grid, grid), action_h), dim=1)
         logits = self.one_kernel(logits_action_h)

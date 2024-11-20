@@ -54,7 +54,8 @@ def get_norm_reward(reward, benchmark, benchmark_id, macro_num = 255):
         max_range[benchmark_id]/((max_range[benchmark_id]-min_range[benchmark_id]) * macro_num) 
     return norm_reward
 
-benchmark_list = ['adaptec1', 'adaptec2', 
+benchmark_list = ['adaptec1',
+                #   'adaptec2', 
                 #   'adaptec3', 'adaptec4',
                 #   'bigblue1', 'bigblue2', 'bigblue3', 'bigblue4', 
                 #   'ibm01', 'ibm02', 'ibm03', 'ibm04'
@@ -66,7 +67,7 @@ print("start")
 # select offline data for training
 placedb_g_lib = {
     "adaptec1": PlaceDB("adaptec1"),
-    "adaptec2": PlaceDB("adaptec2"),
+    # "adaptec2": PlaceDB("adaptec2"),
     # "adaptec3": PlaceDB("adaptec3"),
     # "adaptec4": PlaceDB("adaptec4"),
     # "bigblue1": PlaceDB("bigblue1"),
@@ -255,12 +256,17 @@ class Trainer:
                             T_scores_x.append(level)
                             T_scores_y.append(t)
                             tmp_y_1.append(t)
-                    if self.config.test_all_macro:
+                        output = self.get_returns(level, is_single = True, benchmark = benchmark)
+                        outputs_all = self.get_remain_returns(output['actions'], benchmark)
+                        hpwl, cost = outputs_all["hpwl"], outputs_all["cost"]
+                        print("{}-N: hpwl = {}, cost = {}".format(benchmark, hpwl, cost))
+                    else:
                         print("is all macros")
                         _, T_rewards = self.get_returns(level, benchmark = benchmark, is_all_macro = True)
                         for t in T_rewards:
                             T_rewards_x_all_macro.append(level)
                             T_rewards_y_all_macro.append(t)
+                    
 
                 if not self.config.test_all_macro:
                     T_scores_y_all_1.append(np.mean(tmp_y_1))
@@ -268,8 +274,6 @@ class Trainer:
                     T_scores_x_all_1.append(i*3)
                     strftime = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
                     self.envs[benchmark].save_fig('./figures/{}-{}-N.png'.format(strftime, benchmark))
-                    # plt.savefig('./figures/{}-{}-N.png'.format(strftime, benchmark), 
-                    #     dpi=300, bbox_inches='tight', pad_inches = 0.1)
                     self.writer.add_scalars('eval_{}'.format(benchmark), eval_return[benchmark], -1)
                     plt.cla()
             return 
@@ -288,15 +292,21 @@ class Trainer:
                         T_scores_x = []
                         T_scores_y = []
                         plt.cla()
+                        
                         for level in [0]:
                             level /= 100.0
                             eval_return[benchmark][str(level)], T_scores = self.get_returns(level, benchmark = benchmark)
                             for t in T_scores:
                                 T_scores_x.append(level)
                                 T_scores_y.append(t)
+
+                            output = self.get_returns(level, is_single = True, benchmark = benchmark)
+                            outputs_all = self.get_remain_returns(output['actions'], benchmark)
+                            hpwl, cost = outputs_all["hpwl"], outputs_all["cost"]
+                            print("{}-{}: hpwl = {}, cost = {}".format(benchmark, epoch, hpwl, cost))
+
                         strftime = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
                         self.envs[benchmark].save_fig('./figures/{}-{}-{}.png'.format(strftime, benchmark, epoch))
-                        
                         plt.cla()
                         self.writer.add_scalars('eval_{}'.format(benchmark), eval_return[benchmark], epoch)
                 else:
@@ -307,8 +317,6 @@ class Trainer:
         is_shuffle_benchmark_id = False, is_all_macro = False):
         global circuit_feas
         self.model.train(False)
-        # args=Args(self.config.seed)
-        # env = Env(args, benchmark, is_all_macro)
         env = self.envs[benchmark]
         if not os.path.exists("results"):
             os.mkdir("results")
@@ -316,7 +324,6 @@ class Trainer:
             fwrite = open("results/log_{}.log".format(benchmark), 'w')
         global benchmark_to_id
         benchmark_id = torch.tensor(benchmark_to_id[benchmark], dtype=torch.int64).reshape(1, 1)
-        # env.eval()
 
         T_rewards, T_Qs = [], []
         T_scores = []
@@ -454,8 +461,6 @@ class Trainer:
     def get_hpwl(self, actions, benchmark):
         global circuit_feas
         self.model.train(False)
-        # args = Args(self.config.seed)
-        # env = Env(args, benchmark, is_all_macro = True)
         env = self.envs[benchmark]
         state, reward_sum, done, meta_state = env.reset()
         step_num = 0
@@ -468,8 +473,6 @@ class Trainer:
     def get_remain_returns(self, actions, benchmark):
         global circuit_feas
         self.model.train(False)
-        # args = Args(self.config.seed)
-        # env = Env(args, benchmark, is_all_macro = True)
         env = self.envs[benchmark]
         benchmark_id = torch.tensor(benchmark_to_id[benchmark], dtype=torch.int64).reshape(1, 1)
         circuit_feas_for_benchmark = torch.tensor(circuit_feas[benchmark_id], dtype = torch.float32)
@@ -574,12 +577,6 @@ class Env(gym.Env):
 
         self.net_min_max_ord = copy.deepcopy(self.init_net_min_max_ord)
         self.training = True  # Consistent with model training mode
-
-    # def _get_state(self):
-    #     pass
-
-    # def _reset_buffer(self):
-    #     pass
 
     def reset(self):
         self.net_placed_set = {}
@@ -805,23 +802,6 @@ class Env(gym.Env):
             assert hpwl_tmp <= prim_cost +1e-5
             cost += prim_cost
         return hpwl, cost
-
-    # Uses loss of life as terminal signal
-    # def train(self):
-    #     self.training = True
-
-    # # Uses standard terminal signal
-    # def eval(self):
-    #     self.training = False
-
-    # def action_space(self):
-    #     return len(self.actions)
-
-    # def render(self):
-    #     pass
-
-    # def close(self):
-    #     pass
 
 class Args:
     def __init__(self, seed = 42):

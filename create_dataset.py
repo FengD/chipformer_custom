@@ -15,9 +15,11 @@ is_half = False
 # make sure the dataset is in the root path
 pkl_file_name_list = [
     'adaptec1-11082017-expert-data.pkl',
-    'adaptec2-11082115-expert-data.pkl'
+    # 'adaptec2-11082115-expert-data.pkl',
+    # 'adaptec3-11082341-expert-data.pkl',
+    # 'adaptec4-11090233-expert-data.pkl'
     # 'adaptec1_small.pkl',
-    #  'adaptec2_small.pkl',
+    # 'adaptec2_small.pkl',
     # 'adaptec3_small.pkl',
     # 'adaptec4_small.pkl',
     # 'bigblue1_small.pkl',

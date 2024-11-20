@@ -21,7 +21,7 @@ def get_parameter_number(model):
 parser = argparse.ArgumentParser()
 parser.add_argument('--seed', type=int, default=123)
 parser.add_argument('--context_length', type=int, default=256)
-parser.add_argument('--epochs', type=int, default=10000)
+parser.add_argument('--epochs', type=int, default=1000)
 parser.add_argument('--batch_size', type=int, default=32)
 parser.add_argument('--cuda', type=str, default='1,2,3')
 parser.add_argument('--is_eval_only', action='store_true')
@@ -58,7 +58,7 @@ class StateActionReturnDataset(Dataset):
         self.lengths = lengths
     
     def __len__(self):
-        return len(self.data)//self.seq_len
+        return len(self.data) // self.seq_len
 
     def __getitem__(self, idx):
         block_size = self.block_size // 3
@@ -113,6 +113,7 @@ logging.basicConfig(
         datefmt="%m/%d/%Y %H:%M:%S",
         level=logging.INFO,
 )
+
 print("lengths shape", len(lengths))
 train_dataset = StateActionReturnDataset(obss, args.context_length*3, actions, 
     done_idxs, rtgs, timesteps, meta_data, obss_wire, 
@@ -124,22 +125,22 @@ mconf = GPTConfig(train_dataset.vocab_size, train_dataset.block_size,
                   model_type="reward_conditioned", max_timestep=max(timesteps))
 model = GPT(mconf)
 
-model_path = "save_models/trained_model.pkl" 
-
-if model_path is not None:
-    state_dict = torch.load(model_path)
+if config.model_path is not None and os.path.exists(config.model_path):
+    state_dict = torch.load(config.model_path)
     for k,v in state_dict.items():
         if "module." in k:
             state_dict[k.split('.', 1)[1]] = v
         else:
             state_dict[k] = v
     model.load_state_dict(state_dict, strict = True)
-model.eval()
+    model.eval()
+else:
+    model.train()
+
 get_parameter_number(model)
 
 # initialize a trainer instance and kick off training
-epochs = args.epochs
-tconf = TrainerConfig(max_epochs=epochs, batch_size=args.batch_size, learning_rate=6e-4,
+tconf = TrainerConfig(max_epochs=args.epochs, batch_size=args.batch_size, learning_rate=6e-4,
                       lr_decay=True, warmup_tokens=512*20, final_tokens=2*len(train_dataset)*args.context_length*3,
                       num_workers=4, seed=args.seed, model_type="reward_conditioned", max_timestep=max(timesteps),
                       draw_placement = True, is_eval_only = args.is_eval_only,

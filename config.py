@@ -11,5 +11,6 @@ class Config:
         self.embedding_dim = 128
         self.seq_len = 256
         self.seed = 42
+        self.model_path = ""  # empty for training from begining
 
 config = Config()
