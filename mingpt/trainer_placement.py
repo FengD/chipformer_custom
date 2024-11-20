@@ -25,10 +25,11 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 from mingpt.place_db import PlaceDB
-
+from config import config
 import gym
 
-seq_len = 256
+seq_len = config.seq_len
+grid = config.grid
 
 benchmark_to_id = {'adaptec1': 0, 'adaptec2': 1, 'adaptec3': 2, 'adaptec4': 3,
             'bigblue1': 4, 'bigblue2': 5, 'bigblue3': 6, 'bigblue4': 7,
@@ -52,9 +53,6 @@ def get_norm_reward(reward, benchmark, benchmark_id, macro_num = 255):
     norm_reward = reward / (max_range[benchmark_id]-min_range[benchmark_id]) + \
         max_range[benchmark_id]/((max_range[benchmark_id]-min_range[benchmark_id]) * macro_num) 
     return norm_reward
-
-grid = 84
-
 
 benchmark_list = ['adaptec1', 'adaptec2', 
                 #   'adaptec3', 'adaptec4',

@@ -28,9 +28,9 @@ parser.add_argument('--cuda', type=str, default='1,2,3')
 args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = args.cuda
 
+from config import config
 
 model_path = "save_models/trained_model.pkl"
-grid = 84
 total_traj_cnt = 0
 global_best_score = -1.0
 global_best_reward = 1.0e8
@@ -231,8 +231,8 @@ def work(model, pretrain_trainer, replay_buffer, tconf):
 
 
 def get_model(model_path):
-    mconf = GPTConfig(grid ** 2, args.traj_len * 3,
-                  n_layer=6, n_head=8, n_embd=128, 
+    mconf = GPTConfig(config.grid ** 2, args.traj_len * 3,
+                  n_layer=config.num_layers, n_head=config.num_heads, n_embd=config.embedding_dim, 
                   model_type="reward_conditioned", max_timestep=args.traj_len)
     model = GPT(mconf)
     if model_path is not None:

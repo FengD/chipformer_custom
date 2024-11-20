@@ -11,6 +11,8 @@ import torch
 import argparse
 from create_dataset import create_dataset
 
+from config import config
+
 def get_parameter_number(model):
     total_num = sum(p.numel() for p in model.parameters())
     trainable_num = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -29,7 +31,6 @@ args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = args.cuda
 
 set_seed(args.seed)
-grid = 84
 seq_len = args.context_length
 
 class StateActionReturnDataset(Dataset):
@@ -41,7 +42,7 @@ class StateActionReturnDataset(Dataset):
     
         self.block_size = block_size
         self.seq_len = self.block_size // 3
-        self.vocab_size = int((grid) ** 2)
+        self.vocab_size = int((config.grid) ** 2)
         self.data = data
         self.actions = actions
         print("data raw shape", data.shape)
@@ -119,7 +120,7 @@ train_dataset = StateActionReturnDataset(obss, args.context_length*3, actions,
 
 print("!!!! max(timesteps)", max(timesteps))
 mconf = GPTConfig(train_dataset.vocab_size, train_dataset.block_size,
-                  n_layer=6, n_head=8, n_embd=128, 
+                  n_layer=config.num_layers, n_head=config.num_heads, n_embd=config.embedding_dim, 
                   model_type="reward_conditioned", max_timestep=max(timesteps))
 model = GPT(mconf)
 

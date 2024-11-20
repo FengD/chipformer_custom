@@ -4,7 +4,9 @@ import numpy as np
 import torch
 from torch.distributions import Categorical
 import time
-seq_len = 256
+
+from config import config
+seq_len = config.seq_len
 
 class SequenceTrainer:
     def __init__(

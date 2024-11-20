@@ -3,8 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-
-grid = 84
+from config import config
 
 def set_seed(seed):
     random.seed(seed)
@@ -50,7 +49,7 @@ def sample(model, x, steps, temperature=1.0, sample=False, top_k=None, actions=N
             meta_states = meta_state_cond, benchmarks = benchmarks, circuit_feas= circuit_feas,
             is_random_shuffle = is_random_shuffle)
         logits = logits[:, -1, :] / temperature
-        mask = x_cond.reshape(x_cond.shape[0], x_cond.shape[1], 3, grid, grid)[:, -1, 2].reshape(x_cond.shape[0], grid * grid)
+        mask = x_cond.reshape(x_cond.shape[0], x_cond.shape[1], 3, config.grid, config.grid)[:, -1, 2].reshape(x_cond.shape[0], config.grid * config.grid)
         logits = logits - 1.0e8 * mask
         # optionally crop probabilities to only the top k options
         if top_k is not None:
@@ -94,7 +93,7 @@ def sample_a(model, x, steps, temperature=1.0, sample=False, top_k=None, actions
         logits, logits_r, _, _, _, _ = model(x_cond, actions=actions, targets=None, rtgs=rtgs, timesteps=timesteps, 
             meta_states = meta_state_cond, benchmarks = benchmarks, stepwise_returns = stepwise_returns)
         logits = logits[:, -1, :] / temperature
-        mask = x_cond.reshape(x_cond.shape[0], x_cond.shape[1], 3, grid, grid)[:, -1, 2].reshape(x_cond.shape[0], grid * grid)
+        mask = x_cond.reshape(x_cond.shape[0], x_cond.shape[1], 3, config.grid, config.grid)[:, -1, 2].reshape(x_cond.shape[0], config.grid * config.grid)
         logits = logits - 1.0e8 * mask
         if top_k is not None:
             logits = top_k_logits(logits, top_k)

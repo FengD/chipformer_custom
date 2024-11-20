@@ -6,14 +6,18 @@ import time
 from mingpt.trainer_placement import Args, Env, benchmark_to_id,\
                                         max_range, min_range
 
-grid = 84
-seq_len = 256
+from config import config
+
+grid = config.grid
+seq_len = config.seq_len
 is_half = False
 
 # make sure the dataset is in the root path
 pkl_file_name_list = [
-    'adaptec1_small.pkl',
-    # 'adaptec2_small.pkl',
+    'adaptec1-11082017-expert-data.pkl',
+    'adaptec2-11082115-expert-data.pkl'
+    # 'adaptec1_small.pkl',
+    #  'adaptec2_small.pkl',
     # 'adaptec3_small.pkl',
     # 'adaptec4_small.pkl',
     # 'bigblue1_small.pkl',
@@ -94,7 +98,7 @@ def create_dataset(num_buffers=0, num_steps=0, game=0,
             with open(os.path.join(".", pkl_file_name), "rb") as f:
                 print("pkl_file_name", pkl_file_name)
                 sub_cnt = 0
-                benchmark = pkl_file_name.split('_')[0]
+                benchmark = pkl_file_name.split('-')[0]
                 benchmark_id = benchmark_to_id[benchmark]
                 record_cnt = 0
                 while True:

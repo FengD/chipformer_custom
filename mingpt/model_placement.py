@@ -18,7 +18,9 @@ from torch.nn import functional as F
 logger = logging.getLogger(__name__)
 
 from create_dataset import test_returns
-grid = 84
+from config import config
+
+grid = config.grid
 no_circuit_emb = False
 
 benchmark_to_id = {'adaptec1': 0, 'adaptec2': 1, 'adaptec3': 2, 'adaptec4': 3,
@@ -43,11 +45,11 @@ class GPTConfig:
         for k,v in kwargs.items():
             setattr(self, k, v)
 
-class GPT1Config(GPTConfig):
-    """ GPT-1 like network roughly 125M params """
-    n_layer = 12
-    n_head = 12
-    n_embd = 768
+# class GPT1Config(GPTConfig):
+#     """ GPT-1 like network roughly 125M params """ # it is the gpt-2 chonfig 125M param
+#     n_layer = 12
+#     n_head = 12
+#     n_embd = 768
 
 class CausalSelfAttention(nn.Module):
     """
@@ -112,14 +114,6 @@ class Block(nn.Module):
         x = x + self.attn(self.ln1(x))
         x = x + self.mlp(self.ln2(x))
         return x
-
-
-class Reshape(nn.Module):
-    def __init__(self, *args):
-        super(Reshape, self).__init__()
-        self.shape = args
-    def forward(self, x):
-        return x.view((x.size(0),)+self.shape)
 
 
 class GPT(nn.Module):

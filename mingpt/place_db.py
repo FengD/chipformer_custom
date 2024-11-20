@@ -278,6 +278,7 @@ def get_total_area(node_info):
         area += node_info[node_name]["x"] * node_info[node_name]["y"]
     return area
 
+# 
 def divide_node(node_info):
     new_node_info = {}
     fixed_node_info = {}
