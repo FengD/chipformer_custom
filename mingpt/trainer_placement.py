@@ -743,6 +743,15 @@ class Env(gym.Env):
                     size_y / self.grid, linewidth=1, edgecolor='k',
                 )
             )
+            center_x = x + size_x / 2
+            center_y = y + size_y / 2
+            ax1.scatter(center_x / self.grid, center_y / self.grid, color='red', s=0.1)  # add center point
+
+            for net_name in self.placedb.node_to_net_dict[node_name]:
+                pin_x = center_x + self.placedb.net_info[net_name]["nodes"][node_name]["x_offset"] / self.ratio
+                pin_y = center_y + self.placedb.net_info[net_name]["nodes"][node_name]["y_offset"] / self.ratio
+                ax1.scatter(pin_x / self.grid, pin_y / self.grid, color='black', s=0.1)  # add pin point
+            
         fig1.savefig(file_path, dpi=300, bbox_inches='tight', pad_inches=0.1)
         plt.close()
 
