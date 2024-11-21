@@ -16,17 +16,14 @@ from mingpt.place_db import PlaceDB
 # Train on CPU (hide GPU) due to memory constraints
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
-benchmark_list = ['adaptec1', 'adaptec2', 'adaptec3', 'adaptec4']
-# benchmark_list = ['adaptec1', 'adaptec2', 'adaptec3', 'adaptec4',
-# 'bigblue1', 'bigblue2', 'bigblue3', 'bigblue4', 
-# 'ibm01', 'ibm02', 'ibm03', 'ibm04']
+from config import config
 
-model_path = "save_graph_models/2024-11-19-11-38-39-0.9874-0.9865.pkl"
+model_path = "save_graph_models/2024-11-21-16-09-41-0.8931-0.8467_12circuits_VGAE.pkl"
 state_dict = torch.load(model_path)
 
 result = {}
 
-for benchmark in benchmark_list:
+for benchmark in config.benchmark_list:
     place_db = PlaceDB(benchmark)
     features = place_db.features
     adj = place_db.adj

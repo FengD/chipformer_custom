@@ -16,9 +16,11 @@ from mingpt.place_db import PlaceDB
 # Train on CPU (hide GPU) due to memory constraints
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
+from config import config
+
 offset = 0
 graph = {}
-for i, benchmark in enumerate(["adaptec1","adaptec2","adaptec3","adaptec4"]):
+for i, benchmark in enumerate(config.benchmark_list):
     placedb = PlaceDB(benchmark, offset = offset)
     
     tmp_features, tmp_graph = placedb.features, placedb.graph
