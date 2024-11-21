@@ -18,14 +18,14 @@ pkl_file_name_list = [
     # 'adaptec2-11082115-expert-data.pkl',
     # 'adaptec3-11082341-expert-data.pkl',
     # 'adaptec4-11090233-expert-data.pkl'
-    # 'adaptec1_small.pkl',
-    # 'adaptec2_small.pkl',
-    # 'adaptec3_small.pkl',
-    # 'adaptec4_small.pkl',
-    # 'bigblue1_small.pkl',
-    # 'bigblue2_small.pkl',
-    # 'bigblue3_small.pkl',
-    # 'bigblue4_small.pkl',
+    'bigblue1-11090520-expert-data.pkl',
+    # 'bigblue2-11090541-expert-data.pkl',
+    # 'bigblue3-11090819-expert-data.pkl',
+    # 'bigblue4-11091146-expert-data.pkl',
+    'ibm01-11091938-expert-data.pkl',
+    # 'ibm02-11102110-expert-data.pkl',
+    # 'ibm03-11102344-expert-data.pkl',
+    # 'ibm04-11110217-expert-data.pkl',
 ]
 
 # set the upbound volume of the dataset
@@ -97,7 +97,7 @@ def create_dataset(num_buffers=0, num_steps=0, game=0,
     start_rec = 0
     if not is_eval_only or len(pkl_file_name_list) == 1:
         for pkl_file_name in pkl_file_name_list:
-            with open(os.path.join(".", pkl_file_name), "rb") as f:
+            with open(os.path.join("./data_expert/", pkl_file_name), "rb") as f:
                 print("pkl_file_name", pkl_file_name)
                 sub_cnt = 0
                 benchmark = pkl_file_name.split('-')[0]

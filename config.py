@@ -12,5 +12,12 @@ class Config:
         self.seq_len = 256
         self.seed = 42
         self.model_path = ""  # empty for training from begining
-
+        self.benchmark_list = [
+                'adaptec1', 
+                # 'adaptec2', 'adaptec3', 'adaptec4',
+                'bigblue1', 
+                # 'bigblue2', 'bigblue3', 'bigblue4', 
+                'ibm01', 
+                # 'ibm02', 'ibm03', 'ibm04'
+                ]
 config = Config()

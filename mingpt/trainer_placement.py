@@ -25,11 +25,11 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 from mingpt.place_db import PlaceDB
-from config import config
+from config import config as cfg
 import gym
 
-seq_len = config.seq_len
-grid = config.grid
+seq_len = cfg.seq_len
+grid = cfg.grid
 
 benchmark_to_id = {'adaptec1': 0, 'adaptec2': 1, 'adaptec3': 2, 'adaptec4': 3,
             'bigblue1': 4, 'bigblue2': 5, 'bigblue3': 6, 'bigblue4': 7,
@@ -54,14 +54,7 @@ def get_norm_reward(reward, benchmark, benchmark_id, macro_num = 255):
         max_range[benchmark_id]/((max_range[benchmark_id]-min_range[benchmark_id]) * macro_num) 
     return norm_reward
 
-benchmark_list = ['adaptec1',
-                #   'adaptec2', 
-                #   'adaptec3', 'adaptec4',
-                #   'bigblue1', 'bigblue2', 'bigblue3', 'bigblue4', 
-                #   'ibm01', 'ibm02', 'ibm03', 'ibm04'
-                  ]
-
-benchmark_list_abbre = [x[0]+x[-1] for x in benchmark_list]
+benchmark_list_abbre = [x[0]+x[-1] for x in cfg.benchmark_list]
 print("start")
 
 # select offline data for training
@@ -70,11 +63,11 @@ placedb_g_lib = {
     # "adaptec2": PlaceDB("adaptec2"),
     # "adaptec3": PlaceDB("adaptec3"),
     # "adaptec4": PlaceDB("adaptec4"),
-    # "bigblue1": PlaceDB("bigblue1"),
+    "bigblue1": PlaceDB("bigblue1"),
     # "bigblue2": PlaceDB("bigblue2"),
     # "bigblue3": PlaceDB("bigblue3"),
     # "bigblue4": PlaceDB("bigblue4"),
-    # "ibm01": PlaceDB("ibm01"),
+    "ibm01": PlaceDB("ibm01"),
     # "ibm02": PlaceDB("ibm02"),
     # "ibm03": PlaceDB("ibm03"),
     # "ibm04": PlaceDB("ibm04"),
@@ -141,7 +134,7 @@ class Trainer:
 
         self.envs = {}
         self.args=Args(self.config.seed)
-        for benchmark in benchmark_list:
+        for benchmark in cfg.benchmark_list:
             self.envs[benchmark] = gym.make('place_env-v1', args=self.args, benchmark=benchmark, is_all_macro=True)
 
     def save_checkpoint(self):
@@ -238,7 +231,7 @@ class Trainer:
             T_scores_y_all_1 = []
             T_scores_y_all_err_1 = []
             T_scores_x_all_1 = []
-            for i, benchmark in enumerate(benchmark_list):
+            for i, benchmark in enumerate(cfg.benchmark_list):
                 eval_return[benchmark] = {}
                 T_scores_x = []
                 T_scores_y = []
@@ -285,7 +278,7 @@ class Trainer:
                     assert False
                 elif self.config.model_type == 'reward_conditioned':
                     eval_return = {}
-                    for i, benchmark in enumerate(benchmark_list):
+                    for i, benchmark in enumerate(cfg.benchmark_list):
                         if benchmark not in placedb_g_lib:
                             continue
                         eval_return[benchmark] = {}

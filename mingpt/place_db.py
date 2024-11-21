@@ -306,19 +306,20 @@ class PlaceDB():
             self.node_name_to_id = None
         else:
             self.benchmark = benchmark
+            self.benchmark_path = "./data/" + benchmark
             self.offset = 0
             
-            assert os.path.exists(benchmark)
-            node_file = open(os.path.join(benchmark, benchmark+".nodes"), "r")
+            assert os.path.exists(self.benchmark_path)
+            node_file = open(os.path.join(self.benchmark_path, benchmark+".nodes"), "r")
             self.node_info, self.node_info_raw_id_name, \
                 self.port_info = read_node_file(node_file, benchmark)
-            pl_file = open(os.path.join(benchmark, benchmark+".pl"), "r")
+            pl_file = open(os.path.join(self.benchmark_path, benchmark+".pl"), "r")
             node_file.close()
-            net_file = open(os.path.join(benchmark, benchmark+".nets"), "r")
+            net_file = open(os.path.join(self.benchmark_path, benchmark+".nets"), "r")
             self.net_info = read_net_file(net_file, self.node_info, self.port_info)
             self.net_cnt = len(self.net_info)
             net_file.close()
-            pl_file = open(os.path.join(benchmark, benchmark+".pl"), "r")
+            pl_file = open(os.path.join(self.benchmark_path, benchmark+".pl"), "r")
             if benchmark == "adaptec1" or benchmark == "bigblue1":
                 read_pl_file(pl_file, self.node_info, self.port_info)
                 self.max_height, self.max_width = int(10000 * 1), int(10000 * 1)
@@ -334,7 +335,7 @@ class PlaceDB():
                 self.port_to_net_dict = {}
             else:
                 self.port_to_net_dict = get_port_to_net_dict(self.port_info, self.net_info)
-                scl_file = open(os.path.join(benchmark, benchmark+".scl"), "r")
+                scl_file = open(os.path.join(self.benchmark_path, benchmark+".scl"), "r")
                 self.max_height, self.max_width = read_scl_file(scl_file, benchmark)
 
             self.node_to_net_dict = get_node_to_net_dict(self.node_info, self.net_info)

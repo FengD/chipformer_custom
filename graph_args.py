@@ -1,6 +1,6 @@
 ### CONFIGS ###  https://arxiv.org/pdf/1611.07308
 dataset = 'cora' # dataset of paper references
-model = 'GAE'
+model = 'VGAE'
 
 input_dim = 4
 hidden1_dim = 32
